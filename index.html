@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Monitoring System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .auth-form {
+            padding: 40px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2d3436;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #74b9ff;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .dashboard {
+            padding: 30px;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .nav-btn {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn.active {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+        }
+        
+        .user-dashboard {
+            padding: 30px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .metric-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2d3436;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin-bottom: 20px;
+        }
+        
+        .quality-indicator {
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .quality-good {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .quality-moderate {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .quality-poor {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .contact-form {
+            background: #f8f9fa;
+            padding: 30px;
+            margin-top: 30px;
+        }
+        
+        .contact-form h3 {
+            margin-bottom: 20px;
+            color: #2d3436;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .location-selector {
+            margin-bottom: 20px;
+        }
+        
+        .data-display {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .auth-switch a {
+            color: #74b9ff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .alert {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .admin-section {
+            display: none;
+        }
+
+        .admin-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Page -->
+        <div id="loginPage" class="page active">
+            <div class="header">
+                <h1> Water Monitoring System</h1>
+                <p>Smart Water Quality & Management</p>
+            </div>
+            <div class="auth-form">
+                <h2>Login</h2>
+                <div id="loginAlert"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Login as</label>
+                        <select id="userType">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+                <div class="auth-switch">
+                    <a onclick="showSignup()">Don't have an account? Sign up</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signup Page -->
+        <div id="signupPage" class="page">
+            <div class="header">
+                <h1> Create Account</h1>
+                <p>Join our water monitoring system</p>
+            </div>
+            <div class="auth-form">
+                <h2>Sign Up</h2>
+                <div id="signupAlert"></div>
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="signupName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="signupEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="signupPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" id="signupLocation" placeholder="e.g., Building A, Floor 2" required>
+                    </div>
+                    <button type="submit" class="btn">Sign Up</button>
+                </form>
+                <div class="auth-switch">
+                    <a onclick="showLogin()">Already have an account? Login</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Dashboard -->
+        <div id="userDashboard" class="page">
+            <div class="header">
+                <div class="dashboard-header">
+                    <h1>Water Quality Dashboard</h1>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div class="user-dashboard">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-title">Water Level</div>
+                        <div class="chart-container">
+                            <canvas id="waterLevelChart"></canvas>
+                        </div>
+                        <div id="waterLevelStatus" class="quality-indicator quality-good">Level: Good (75%)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Home Water Quality</div>
+                        <div class="chart-container">
+                            <canvas id="homeQualityChart"></canvas>
+                        </div>
+                        <div id="homeQualityStatus" class="quality-indicator quality-good">TDS: 150 ppm - Good</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Resource Quality</div>
+                        <div class="chart-container">
+                            <canvas id="resourceQualityChart"></canvas>
+                        </div>
+                        <div id="resourceQualityStatus" class="quality-indicator quality-moderate">TDS: 300 ppm - Moderate</div>
+                    </div>
+                </div>
+                
+                <div class="contact-form">
+                    <h3>Contact Support</h3>
+                    <form id="contactForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" id="contactName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="contactEmail" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <input type="text" id="contactSubject" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Message</label>
+                            <textarea id="contactMessage" rows="5" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; resize: vertical;" required></textarea>
+                        </div>
+                        <button type="submit" class="btn">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="adminDashboard" class="page">
+            <div class="header">
+                <div class="dashboard-header">
+                    <h1>Admin Dashboard</h1>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div class="dashboard">
+                <div class="dashboard-nav">
+                    <button class="nav-btn active" onclick="showAdminSection('quality')">Quality</button>
+                    <button class="nav-btn" onclick="showAdminSection('power')">Power Consumption</button>
+                    <button class="nav-btn" onclick="showAdminSection('flow')">Water Flow</button>
+                </div>
+
+                <!-- Quality Section -->
+                <div id="qualitySection" class="admin-section active">
+                    <div class="location-selector">
+                        <label>Select Location: </label>
+                        <select id="locationSelect" onchange="loadLocationData()">
+                            <option value="">Choose a location...</option>
+                        </select>
+                    </div>
+                    <div id="locationData" class="data-display" style="display: none;">
+                        <h3 id="selectedLocation">Location Data</h3>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-title">Resource Quality</div>
+                                <div id="adminResourceQuality" class="quality-indicator quality-good">TDS: 200 ppm - Good</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-title">Home Quality</div>
+                                <div id="adminHomeQuality" class="quality-indicator quality-good">TDS: 120 ppm - Excellent</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Power Consumption Section -->
+                <div id="powerSection" class="admin-section">
+                    <h3>Daily Power Consumption</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="powerChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Water Flow Section -->
+                <div id="flowSection" class="admin-section">
+                    <h3>Daily Water Flow</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="flowChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration - Replace with your actual Firebase config
+        const firebaseConfig = {
+  apiKey: "AIzaSyA76sHuSrxz0JQxq_3Hi6Pnb8-pHPUXB-c",
+  authDomain: "iot-website-7caa6.firebaseapp.com",
+  projectId: "iot-website-7caa6",
+  storageBucket: "iot-website-7caa6.firebasestorage.app",
+  messagingSenderId: "352671469313",
+  appId: "1:352671469313:web:9e40a6a76630ed10f11500",
+  measurementId: "G-092L290DBV"
+};
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Global variables
+        let currentUser = null;
+        let charts = {};
+
+        // Authentication Functions
+        function showLogin() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('loginPage').classList.add('active');
+        }
+
+        function showSignup() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('signupPage').classList.add('active');
+        }
+
+        function showAlert(elementId, message, type = 'error') {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => alertDiv.innerHTML = '', 5000);
+        }
+
+        // Login Form Handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const userType = document.getElementById('userType').value;
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                
+                // Check user type in Firestore
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                const userData = userDoc.data();
+                
+                if (userData && userData.type === userType) {
+                    if (userType === 'admin') {
+                        showAdminDashboard();
+                    } else {
+                        showUserDashboard();
+                    }
+                } else {
+                    showAlert('loginAlert', 'Invalid user type selected');
+                    auth.signOut();
+                }
+            } catch (error) {
+                showAlert('loginAlert', error.message);
+            }
+        });
+
+        // Signup Form Handler
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const location = document.getElementById('signupLocation').value;
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Store user data in Firestore
+                await db.collection('users').doc(user.uid).set({
+                    name: name,
+                    email: email,
+                    location: location,
+                    type: 'user',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Initialize sensor data for the user
+                await initializeUserSensorData(user.uid, location);
+                
+                showAlert('signupAlert', 'Account created successfully! Please login.', 'success');
+                setTimeout(showLogin, 2000);
+            } catch (error) {
+                showAlert('signupAlert', error.message);
+            }
+        });
+
+        // Contact Form Handler
+        document.getElementById('contactForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('contactName').value;
+            const email = document.getElementById('contactEmail').value;
+            const subject = document.getElementById('contactSubject').value;
+            const message = document.getElementById('contactMessage').value;
+
+            try {
+                await db.collection('contactMessages').add({
+                    name: name,
+                    email: email,
+                    subject: subject,
+                    message: message,
+                    userId: currentUser ? currentUser.uid : null,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert('Message sent successfully!');
+                document.getElementById('contactForm').reset();
+            } catch (error) {
+                alert('Error sending message: ' + error.message);
+            }
+        });
+
+        // Initialize sensor data for new user
+        async function initializeUserSensorData(userId, location) {
+            const sensorData = {
+                waterLevel: Math.floor(Math.random() * 40) + 60, // 60-100%
+                homeQuality: Math.floor(Math.random() * 200) + 50, // 50-250 ppm
+                resourceQuality: Math.floor(Math.random() * 300) + 100, // 100-400 ppm
+                powerConsumption: generatePowerData(),
+                waterFlow: generateFlowData(),
+                location: location,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection('sensorData').doc(userId).set(sensorData);
+        }
+
+        // Generate mock power consumption data
+        function generatePowerData() {
+            const data = [];
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            days.forEach(day => {
+                data.push({
+                    day: day,
+                    consumption: Math.floor(Math.random() * 50) + 20
+                });
+            });
+            return data;
+        }
+
+        // Generate mock water flow data
+        function generateFlowData() {
+            const data = [];
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            days.forEach(day => {
+                data.push({
+                    day: day,
+                    flow: Math.floor(Math.random() * 200) + 100
+                });
+            });
+            return data;
+        }
+
+        // Dashboard Functions
+        function showUserDashboard() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('userDashboard').classList.add('active');
+            loadUserData();
+        }
+
+        function showAdminDashboard() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('adminDashboard').classList.add('active');
+            loadAdminData();
+        }
+
+        // Load user sensor data
+        async function loadUserData() {
+            if (!currentUser) return;
+
+            try {
+                const doc = await db.collection('sensorData').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    updateUserCharts(data);
+                    
+                    // Set up real-time listener
+                    db.collection('sensorData').doc(currentUser.uid).onSnapshot((doc) => {
+                        if (doc.exists) {
+                            updateUserCharts(doc.data());
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Update user dashboard charts
+        function updateUserCharts(data) {
+            // Water Level Chart (Pie Chart)
+            createPieChart('waterLevelChart', 'Water Level', data.waterLevel);
+            updateQualityStatus('waterLevelStatus', `Level: ${getWaterLevelStatus(data.waterLevel)} (${data.waterLevel}%)`, getWaterLevelClass(data.waterLevel));
+
+            // Home Quality Chart
+            createGaugeChart('homeQualityChart', 'Home Quality', data.homeQuality, 1000);
+            updateQualityStatus('homeQualityStatus', `TDS: ${data.homeQuality} ppm - ${getTDSStatus(data.homeQuality)}`, getTDSClass(data.homeQuality));
+
+            // Resource Quality Chart
+            createGaugeChart('resourceQualityChart', 'Resource Quality', data.resourceQuality, 1000);
+            updateQualityStatus('resourceQualityStatus', `TDS: ${data.resourceQuality} ppm - ${getTDSStatus(data.resourceQuality)}`, getTDSClass(data.resourceQuality));
+        }
+
+        // Create pie chart for water level
+        function createPieChart(canvasId, label, value) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+
+            charts[canvasId] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Used', 'Remaining'],
+                    datasets: [{
+                        data: [value, 100 - value],
+                        backgroundColor: ['#74b9ff', '#e9ecef'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // Create gauge chart for TDS values
+        function createGaugeChart(canvasId, label, value, max) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+
+            const percentage = (value / max) * 100;
+            
+            charts.flowChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: flowData.map(d => d.day),
+                    datasets: [{
+                        label: 'Water Flow (Liters)',
+                        data: flowData.map(d => d.flow),
+                        backgroundColor: 'rgba(116, 185, 255, 0.2)',
+                        borderColor: '#74b9ff',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Flow (Liters)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utility functions for status and styling
+        function getWaterLevelStatus(level) {
+            if (level >= 70) return 'Good';
+            if (level >= 40) return 'Moderate';
+            return 'Low';
+        }
+
+        function getWaterLevelClass(level) {
+            if (level >= 70) return 'quality-good';
+            if (level >= 40) return 'quality-moderate';
+            return 'quality-poor';
+        }
+
+        function getTDSStatus(tds) {
+            if (tds <= 150) return 'Excellent';
+            if (tds <= 300) return 'Good';
+            if (tds <= 500) return 'Moderate';
+            return 'Poor';
+        }
+
+        function getTDSClass(tds) {
+            if (tds <= 300) return 'quality-good';
+            if (tds <= 500) return 'quality-moderate';
+            return 'quality-poor';
+        }
+
+        function getTDSColor(tds) {
+            if (tds <= 150) return '#00b894';
+            if (tds <= 300) return '#fdcb6e';
+            if (tds <= 500) return '#e17055';
+            return '#d63031';
+        }
+
+        function updateQualityStatus(elementId, text, className) {
+            const element = document.getElementById(elementId);
+            element.textContent = text;
+            element.className = `quality-indicator ${className}`;
+        }
+
+        // Logout function
+        function logout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                showLogin();
+                // Clear all charts
+                Object.values(charts).forEach(chart => {
+                    if (chart) chart.destroy();
+                });
+                charts = {};
+            });
+        }
+
+        // Auto-update sensor data (simulate real-time updates) - Only for regular users
+        setInterval(async () => {
+            if (currentUser) {
+                try {
+                    // Check if current user is admin
+                    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                    const userData = userDoc.data();
+                    
+                    // Only update sensor data for regular users, not admins
+                    if (userData && userData.type === 'user') {
+                        const sensorRef = db.collection('sensorData').doc(currentUser.uid);
+                        const doc = await sensorRef.get();
+                        
+                        if (doc.exists) {
+                            const currentData = doc.data();
+                            
+                            // Simulate sensor fluctuations
+                            const updates = {
+                                waterLevel: Math.max(0, Math.min(100, currentData.waterLevel + (Math.random() - 0.5) * 5)),
+                                homeQuality: Math.max(50, Math.min(500, currentData.homeQuality + (Math.random() - 0.5) * 20)),
+                                resourceQuality: Math.max(100, Math.min(600, currentData.resourceQuality + (Math.random() - 0.5) * 30)),
+                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                            };
+                            
+                            await sensorRef.update(updates);
+                        }
+                    }
+                    
+                    // Update all user sensor data for admin monitoring
+                    if (userData && userData.type === 'admin') {
+                        const usersSnapshot = await db.collection('users').where('type', '==', 'user').get();
+                        
+                        usersSnapshot.forEach(async (userDoc) => {
+                            const sensorRef = db.collection('sensorData').doc(userDoc.id);
+                            const sensorDoc = await sensorRef.get();
+                            
+                            if (sensorDoc.exists) {
+                                const currentData = sensorDoc.data();
+                                
+                                const updates = {
+                                    waterLevel: Math.max(0, Math.min(100, currentData.waterLevel + (Math.random() - 0.5) * 3)),
+                                    homeQuality: Math.max(50, Math.min(500, currentData.homeQuality + (Math.random() - 0.5) * 15)),
+                                    resourceQuality: Math.max(100, Math.min(600, currentData.resourceQuality + (Math.random() - 0.5) * 20)),
+                                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                                };
+                                
+                                await sensorRef.update(updates);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error updating sensor data:', error);
+                }
+            }
+        }, 15000); // Update every 15 seconds
+
+        // Initialize app
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+            } else {
+                currentUser = null;
+                showLogin();
+            }
+        });
+
+        // Add sample admin user creation (run this once in console)
+        async function createAdminUser() {
+            try {
+                const adminCredential = await auth.createUserWithEmailAndPassword('admin@water.com', 'admin123');
+                await db.collection('users').doc(adminCredential.user.uid).set({
+                    name: 'System Administrator',
+                    email: 'admin@water.com',
+                    type: 'admin',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log('Admin user created successfully');
+                auth.signOut();
+            } catch (error) {
+                console.error('Error creating admin user:', error);
+            }
+        }
+
+        // Sample data initialization for testing
+        async function initializeSampleData() {
+            const sampleUsers = [
+                { location: 'Building A, Floor 1', email: 'user1@test.com' },
+                { location: 'Building A, Floor 2', email: 'user2@test.com' },
+                { location: 'Building B, Floor 1', email: 'user3@test.com' }
+            ];
+
+            for (let user of sampleUsers) {
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(user.email, 'test123');
+                    await db.collection('users').doc(userCredential.user.uid).set({
+                        name: `User ${user.location}`,
+                        email: user.email,
+                        location: user.location,
+                        type: 'user',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    await initializeUserSensorData(userCredential.user.uid, user.location);
+                } catch (error) {
+                    console.log(`User ${user.email} might already exist`);
+                }
+            }
+            auth.signOut();
+        }
+
+        // Error handling for Firebase connection
+        window.addEventListener('error', (e) => {
+            if (e.message.includes('Firebase')) {
+                console.error('Firebase Error:', e.message);
+                alert('Please check your Firebase configuration and internet connection.');
+            }
+        });
+
+    </script>
+</body>
+</html>
