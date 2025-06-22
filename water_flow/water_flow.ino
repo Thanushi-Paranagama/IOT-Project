@@ -1,8 +1,8 @@
 // Constants
-const byte flowSensorPin = 2;  // D2 on Arduino Uno
+const byte flowSensorPin = 2;  // D2 pin
 volatile int pulseCount = 0;
 
-const float calibrationFactor = 7.5; // Adjust based on your sensor
+const float calibrationFactor = 7.5; 
 
 // Variables
 float flowRate;     // Liters per minute
