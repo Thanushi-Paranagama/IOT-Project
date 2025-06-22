@@ -150,6 +150,33 @@
         .status-fair { background: #fff3cd; color: #856404; }
         .status-poor { background: #f8d7da; color: #721c24; }
         
+        .purity-comparison {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .comparison-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .comparison-positive {
+            color: #27ae60;
+        }
+        
+        .comparison-negative {
+            color: #e74c3c;
+        }
+        
+        .comparison-neutral {
+            color: #f39c12;
+        }
+        
         .contact-section {
             background: white;
             padding: 40px;
@@ -268,27 +295,28 @@
                 <div id="qualityMetrics">
                     <div class="quality-indicator">
                         <div>
-                            <div style="font-size: 14px; color: #666;">TDS Level</div>
-                            <div class="quality-value" id="tdsValue">Loading...</div>
+                            <div style="font-size: 14px; color: #666;">Home TDS Level</div>
+                            <div class="quality-value" id="homeTdsValue">Loading...</div>
                         </div>
-                        <div class="quality-status" id="tdsStatus">-</div>
+                        <div class="quality-status" id="homeTdsStatus">-</div>
                     </div>
                     <div class="quality-indicator">
                         <div>
-                            <div style="font-size: 14px; color: #666;">pH Level</div>
-                            <div class="quality-value" id="phValue">Loading...</div>
+                            <div style="font-size: 14px; color: #666;">Resource TDS Level</div>
+                            <div class="quality-value" id="resourceTdsValue">Loading...</div>
                         </div>
-                        <div class="quality-status" id="phStatus">-</div>
-                    </div>
-                    <div class="quality-indicator">
-                        <div>
-                            <div style="font-size: 14px; color: #666;">Temperature</div>
-                            <div class="quality-value" id="tempValue">Loading...</div>
-                        </div>
-                        <div class="quality-status" id="tempStatus">-</div>
+                        <div class="quality-status" id="resourceTdsStatus">-</div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Purity Comparison Section -->
+        <div class="purity-comparison">
+            <h3>Purity Analysis</h3>
+            <p>Difference between Home and Resource Water Quality</p>
+            <div class="comparison-value" id="purityDifference">Loading...</div>
+            <div id="purityAnalysis">Analyzing water quality difference...</div>
         </div>
 
         <!-- Contact Form Section -->
@@ -348,6 +376,10 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
+        // Global variables to store TDS values for comparison
+        let homeTdsValue = 0;
+        let resourceTdsValue = 0;
+
         // Check authentication
         auth.onAuthStateChanged((user) => {
             if (user) {
@@ -377,22 +409,18 @@
                 updateWaterLevelChart(waterLevel);
             });
 
-            // TDS sensor data
-            database.ref('sensors/tds').on('value', (snapshot) => {
-                const tds = snapshot.val() || 0;
-                updateTDSDisplay(tds);
+            // Home TDS sensor data
+            database.ref('sensors/homeTds').on('value', (snapshot) => {
+                homeTdsValue = snapshot.val() || 0;
+                updateTDSDisplay(homeTdsValue, 'home');
+                updatePurityComparison();
             });
 
-            // pH sensor data
-            database.ref('sensors/ph').on('value', (snapshot) => {
-                const ph = snapshot.val() || 7.0;
-                updatePHDisplay(ph);
-            });
-
-            // Temperature sensor data
-            database.ref('sensors/temperature').on('value', (snapshot) => {
-                const temp = snapshot.val() || 25;
-                updateTempDisplay(temp);
+            // Resource TDS sensor data
+            database.ref('sensors/resourceTds').on('value', (snapshot) => {
+                resourceTdsValue = snapshot.val() || 0;
+                updateTDSDisplay(resourceTdsValue, 'resource');
+                updatePurityComparison();
             });
         }
 
@@ -418,8 +446,11 @@
         }
 
         // Update TDS display
-        function updateTDSDisplay(tds) {
-            document.getElementById('tdsValue').textContent = tds + ' ppm';
+        function updateTDSDisplay(tds, type) {
+            const valueId = type === 'home' ? 'homeTdsValue' : 'resourceTdsValue';
+            const statusId = type === 'home' ? 'homeTdsStatus' : 'resourceTdsStatus';
+            
+            document.getElementById(valueId).textContent = tds + ' ppm';
             
             let status, statusClass;
             if (tds < 150) {
@@ -436,57 +467,50 @@
                 statusClass = 'status-poor';
             }
             
-            const statusElement = document.getElementById('tdsStatus');
+            const statusElement = document.getElementById(statusId);
             statusElement.textContent = status;
             statusElement.className = 'quality-status ' + statusClass;
         }
 
-        // Update pH display
-        function updatePHDisplay(ph) {
-            document.getElementById('phValue').textContent = ph.toFixed(1);
+        // Update purity comparison
+        function updatePurityComparison() {
+            const differenceElement = document.getElementById('purityDifference');
+            const analysisElement = document.getElementById('purityAnalysis');
             
-            let status, statusClass;
-            if (ph >= 6.5 && ph <= 8.5) {
-                status = 'Excellent';
-                statusClass = 'status-excellent';
-            } else if (ph >= 6.0 && ph <= 9.0) {
-                status = 'Good';
-                statusClass = 'status-good';
-            } else if (ph >= 5.5 && ph <= 9.5) {
-                status = 'Fair';
-                statusClass = 'status-fair';
+            const difference = homeTdsValue - resourceTdsValue;
+            const absoluteDifference = Math.abs(difference);
+            
+            // Update difference display
+            if (difference > 0) {
+                differenceElement.textContent = `+${difference} ppm`;
+                differenceElement.className = 'comparison-value comparison-negative';
+            } else if (difference < 0) {
+                differenceElement.textContent = `${difference} ppm`;
+                differenceElement.className = 'comparison-value comparison-positive';
             } else {
-                status = 'Poor';
-                statusClass = 'status-poor';
+                differenceElement.textContent = `${difference} ppm`;
+                differenceElement.className = 'comparison-value comparison-neutral';
             }
             
-            const statusElement = document.getElementById('phStatus');
-            statusElement.textContent = status;
-            statusElement.className = 'quality-status ' + statusClass;
-        }
-
-        // Update temperature display
-        function updateTempDisplay(temp) {
-            document.getElementById('tempValue').textContent = temp + '°C';
-            
-            let status, statusClass;
-            if (temp >= 20 && temp <= 25) {
-                status = 'Excellent';
-                statusClass = 'status-excellent';
-            } else if (temp >= 18 && temp <= 28) {
-                status = 'Good';
-                statusClass = 'status-good';
-            } else if (temp >= 15 && temp <= 30) {
-                status = 'Fair';
-                statusClass = 'status-fair';
+            // Update analysis text
+            let analysisText;
+            if (absoluteDifference < 50) {
+                analysisText = "Water quality is similar between home and resource. Minimal treatment needed.";
+            } else if (difference > 0) {
+                if (absoluteDifference > 200) {
+                    analysisText = "Home water has significantly higher TDS than resource. Check filtration system.";
+                } else {
+                    analysisText = "Home water has higher TDS than resource. Consider system maintenance.";
+                }
             } else {
-                status = 'Poor';
-                statusClass = 'status-poor';
+                if (absoluteDifference > 200) {
+                    analysisText = "Resource water has significantly higher TDS than home. Good filtration performance.";
+                } else {
+                    analysisText = "Resource water has higher TDS than home. Filtration is working effectively.";
+                }
             }
             
-            const statusElement = document.getElementById('tempStatus');
-            statusElement.textContent = status;
-            statusElement.className = 'quality-status ' + statusClass;
+            analysisElement.textContent = analysisText;
         }
 
         // Contact form handler
