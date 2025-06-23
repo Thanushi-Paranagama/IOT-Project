@@ -1,7 +1,7 @@
-//  Relay motor Configuration 
+// === Relay Motor Configuration ===
 #define RELAY_PIN D1  // GPIO5 on NodeMCU
 
-// Flow Sensor Configuration
+// === Flow Sensor Configuration ===
 const byte flowSensorPin = D2;       // GPIO4 (D2 on NodeMCU)
 volatile int pulseCount = 0;
 const float calibrationFactor = 7.5; // Sensor-specific
@@ -9,45 +9,50 @@ float flowRate;     // Liters per minute
 float volume;       // Total volume in liters
 unsigned long lastFlowCalcTime = 0;
 
-//defining the trigger pin and echo pin 
+// === Tank Levels (in inches) ===
+const int tankBottom = 32;     // Sensor to tank bottom distance
+const int fullLevel = 25;      // Tank height when full
+const int sensorAtFull = tankBottom - fullLevel;  // 7 inches
+const int refillThreshold = tankBottom - 5;       // 27 inches
+
+// === Ultrasonic Sensor ===
 const int trigPin = D5;
 const int echoPin = D6;
 long duration;
 float distance;
 
-//Flow Sensor Interrupt Handler
+// === Flow Sensor Interrupt Handler ===
 void IRAM_ATTR pulseCounter() {
   pulseCount++;
 }
 
-
 void setup() {
-  Serial.begin(9600);  //start serial communication
+  Serial.begin(9600);
 
-  // Setup Relay (Motor)
+  // Motor
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, HIGH);  // Turn motor ON (start refilling)
+  digitalWrite(RELAY_PIN, HIGH);  // Start with motor ON
   Serial.println("Motor turned ON to refill tank.");
 
-    // Setup Flow Sensor
+  // Flow Sensor
   pinMode(flowSensorPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(flowSensorPin), pulseCounter, RISING);
   lastFlowCalcTime = millis();
   volume = 0;
 
-    // Setup Ultrasonic Sensor
-  pinMode(trigPin, OUTPUT); //set trigger pin as output
-  pinMode(echoPin, INPUT); //set echo pin as input
+  // Ultrasonic Sensor
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 }
 
 void loop() {
   unsigned long currentMillis = millis();
 
-  //Flow Sensor Reading Every 1 Second
+  // === Flow Sensor Calculation Every 1 Second ===
   if (currentMillis - lastFlowCalcTime >= 1000) {
-    detachInterrupt(digitalPinToInterrupt(flowSensorPin));  // Temporarily disable interrupts
+    detachInterrupt(digitalPinToInterrupt(flowSensorPin));
 
-    flowRate = pulseCount / calibrationFactor;              // Calculate flow rate
+    flowRate = pulseCount / calibrationFactor;
     float litersPerSecond = flowRate / 60.0;
     volume += litersPerSecond;
 
@@ -62,10 +67,10 @@ void loop() {
     pulseCount = 0;
     lastFlowCalcTime = currentMillis;
 
-    attachInterrupt(digitalPinToInterrupt(flowSensorPin), pulseCounter, RISING);  // Re-enable interrupts
+    attachInterrupt(digitalPinToInterrupt(flowSensorPin), pulseCounter, RISING);
   }
 
-  //Ultrasonic Sensor Reading 
+  // === Ultrasonic Distance Measurement ===
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
@@ -73,20 +78,22 @@ void loop() {
   digitalWrite(trigPin, LOW);
 
   duration = pulseIn(echoPin, HIGH);
-  distance = (duration * 0.0343) / 2;
+  distance = (duration * 0.0135) / 2;  // Convert to inches
 
-  Serial.print("Water Distance: ");
+  Serial.print("Distance: ");
   Serial.print(distance);
-  Serial.println(" cm");
+  Serial.println(" inches");
 
-  // Stop Motor If Water Reaches 3 cm or Less
-  if (distance <= 3.0) {
-    digitalWrite(RELAY_PIN, LOW);  // Turn OFF motor
-    Serial.println("Tank full — Motor stopped.");
-  } else {
-    digitalWrite(RELAY_PIN, HIGH);  // Ensure motor is ON (if not already)
-    Serial.println("Refilling tank...");
+  // === Motor Control Logic ===
+  if (distance >= refillThreshold) {
+    // Water level below 5 inches → refill
+    digitalWrite(RELAY_PIN, HIGH);
+    Serial.println("Tank LOW - Motor ON");
+  } else if (distance <= sensorAtFull) {
+    // Water at full level → stop motor
+    digitalWrite(RELAY_PIN, LOW);
+    Serial.println("Tank FULL - Motor OFF");
   }
 
-  delay(500);
+  delay(1000);
 }
