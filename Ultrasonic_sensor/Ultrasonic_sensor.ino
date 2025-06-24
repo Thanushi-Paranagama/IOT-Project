@@ -1,27 +1,22 @@
-// === Relay Motor Configuration ===
 #define RELAY_PIN D1  // GPIO5 on NodeMCU
 
 // === Flow Sensor Configuration ===
 const byte flowSensorPin = D2;       // GPIO4 (D2 on NodeMCU)
 volatile int pulseCount = 0;
-const float calibrationFactor = 7.5; // Sensor-specific
-float flowRate;     // Liters per minute
-float volume;       // Total volume in liters
+const float calibrationFactor = 7.5;
+float flowRate;
+float volume;
 unsigned long lastFlowCalcTime = 0;
 
-// === Tank Levels (in inches) ===
-const int tankBottom = 32;     // Sensor to tank bottom distance
-const int fullLevel = 25;      // Tank height when full
-const int sensorAtFull = tankBottom - fullLevel;  // 7 inches
-const int refillThreshold = tankBottom - 5;       // 27 inches
-
-// === Ultrasonic Sensor ===
+// === Ultrasonic Sensor Pins ===
 const int trigPin = D5;
 const int echoPin = D6;
 long duration;
 float distance;
 
-// === Flow Sensor Interrupt Handler ===
+// === Tank Constants ===
+const float maxHeight = 14.0;  // Tank height in cm
+
 void IRAM_ATTR pulseCounter() {
   pulseCount++;
 }
@@ -29,18 +24,15 @@ void IRAM_ATTR pulseCounter() {
 void setup() {
   Serial.begin(9600);
 
-  // Motor
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH);  // Start with motor ON
   Serial.println("Motor turned ON to refill tank.");
 
-  // Flow Sensor
   pinMode(flowSensorPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(flowSensorPin), pulseCounter, RISING);
   lastFlowCalcTime = millis();
   volume = 0;
 
-  // Ultrasonic Sensor
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 }
@@ -78,21 +70,31 @@ void loop() {
   digitalWrite(trigPin, LOW);
 
   duration = pulseIn(echoPin, HIGH);
-  distance = (duration * 0.0135) / 2;  // Convert to inches
+  distance = (duration * 0.0343) / 2;
 
-  Serial.print("Distance: ");
+  Serial.print("Distance from Sensor: ");
   Serial.print(distance);
-  Serial.println(" inches");
+  Serial.println(" cm");
+
+  // === Calculate Tank Fill Percentage ===
+  float waterLevel = maxHeight - distance;
+  if (waterLevel < 0) waterLevel = 0;
+  if (waterLevel > maxHeight) waterLevel = maxHeight;
+  float percentageFull = (waterLevel / maxHeight) * 100;
+
+  Serial.print("Tank Fill Level: ");
+  Serial.print(percentageFull);
+  Serial.println(" %");
 
   // === Motor Control Logic ===
-  if (distance >= refillThreshold) {
-    // Water level below 5 inches → refill
+  if (distance > 10.0) {
     digitalWrite(RELAY_PIN, HIGH);
-    Serial.println("Tank LOW - Motor ON");
-  } else if (distance <= sensorAtFull) {
-    // Water at full level → stop motor
+    Serial.println("Water below 4cm - Motor ON");
+  } else if (distance <= 5.0) {
     digitalWrite(RELAY_PIN, LOW);
-    Serial.println("Tank FULL - Motor OFF");
+    Serial.println("Water at 9cm or more - Motor OFF");
+  } else {
+    Serial.println("Water rising... holding motor state.");
   }
 
   delay(1000);
