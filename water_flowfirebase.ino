@@ -6,8 +6,8 @@
 #define WIFI_PASSWORD "6789tfcs"
 
 // Firebase credentials
-#define API_KEY "AIzaSyDIRTwueywm2fcnBGfJa30IZ1ykQF0VwqA"
-#define DATABASE_URL "https://waterflowconnect-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define API_KEY "AIzaSyA3yARNAUvpg2Q5ym2euy8Dafy3ecqo5yM"
+#define DATABASE_URL "https://watermonitoringsystem-d232c-default-rtdb.asia-southeast1.firebasedatabase.app/"
 
 // Firebase objects
 FirebaseData fbdo;
