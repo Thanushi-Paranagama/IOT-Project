@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - Water Quality</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Arial">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      margin-bottom: 30px;
+    }
+
+    .quality-card {
+      background: #f1f1f1;
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+    }
+
+    .quality-card h3 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .value {
+      font-size: 22px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .logout-btn {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Water Quality Monitoring</h1>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </header>
+
+  <div class="container">
+    <h2>Select User Location</h2>
+    <select id="locationSelector" onchange="updateTDS()">
+      <option value="">-- Select Location --</option>
+    </select>
+
+    <div class="quality-card">
+      <h3>Home Tank TDS</h3>
+      <div class="value" id="homeTDS">Loading...</div>
+    </div>
+
+    <div class="quality-card">
+      <h3>Resource Tank TDS</h3>
+      <div class="value" id="resourceTDS">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Firebase & Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.min.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6Cs9LM-y6gBkvDGlDAyn9VPi3F8Wd3uw",
+      authDomain: "monitoring-water-system-ca40a.firebaseapp.com",
+      databaseURL: "https://monitoring-water-system-ca40a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "monitoring-water-system-ca40a",
+      storageBucket: "monitoring-water-system-ca40a.appspot.com",
+      messagingSenderId: "750846490741",
+      appId: "1:750846490741:web:03531a433a164bca59a03c"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    function logout() {
+      auth.signOut().then(() => {
+        window.location.href = 'login.html';
+      });
+    }
+
+    function loadLocations() {
+      const selector = document.getElementById('locationSelector');
+      selector.innerHTML = '<option value="">-- Select Location --</option>';
+      
+      // Assuming structure: sensors/{location}/homeTank/tds
+      database.ref("sensors").once('value').then(snapshot => {
+        const data = snapshot.val();
+        for (let loc in data) {
+          if (data[loc].homeTank && data[loc].resourceTank) {
+            const opt = document.createElement("option");
+            opt.value = loc;
+            opt.textContent = loc;
+            selector.appendChild(opt);
+          }
+        }
+      });
+    }
+
+    function updateTDS() {
+      const location = document.getElementById('locationSelector').value;
+      if (!location) return;
+
+      const homePath = `sensors/${location}/homeTank/tds`;
+      const resourcePath = `sensors/${location}/resourceTank/tds`;
+
+      database.ref(homePath).on('value', snapshot => {
+        document.getElementById('homeTDS').textContent = snapshot.val() ? `${snapshot.val()} ppm` : "No data";
+      });
+
+      database.ref(resourcePath).on('value', snapshot => {
+        document.getElementById('resourceTDS').textContent = snapshot.val() ? `${snapshot.val()} ppm` : "No data";
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = 'login.html';
+      } else {
+        loadLocations();
+      }
+    });
+  </script>
+</body>
+</html>
