@@ -12,7 +12,6 @@
             margin: 0;
             padding: 20px;
         }
-
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 15px;
@@ -21,7 +20,6 @@
             border-radius: 8px;
             margin-bottom: 30px;
         }
-
         .summary-cards {
             display: flex;
             justify-content: center;
@@ -29,7 +27,6 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
         }
-
         .card {
             background: white;
             padding: 20px;
@@ -38,18 +35,15 @@
             width: 250px;
             text-align: center;
         }
-
         .card h4 {
             color: #444;
             margin-bottom: 10px;
         }
-
         .card span {
             font-size: 22px;
             font-weight: bold;
             color: #333;
         }
-
         .controls {
             display: flex;
             flex-wrap: wrap;
@@ -57,7 +51,6 @@
             margin-bottom: 30px;
             justify-content: center;
         }
-
         select,
         button {
             padding: 10px;
@@ -65,31 +58,26 @@
             border-radius: 8px;
             border: 1px solid #ccc;
         }
-
         button {
             background-color: #667eea;
             color: white;
             border: none;
             cursor: pointer;
         }
-
         button:hover {
             background-color: #5a67d8;
         }
-
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
-
         .chart-container {
             background: white;
             padding: 20px;
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
-
         canvas {
             max-width: 100%;
             height: 250px !important;
@@ -98,87 +86,67 @@
 </head>
 <body>
     <div class="header">
-        <h1>Users' Water Quality Dashboard</h1>
+        <h1>Water Quality Dashboard</h1>
     </div>
 
     <div class="controls">
         <select id="userSelector">
             <option value="">Select a user</option>
         </select>
-        <button onclick="loadCharts()">Load Data</button>
+        <button onclick="loadLatestData()">Load Latest Data</button>
+        <button onclick="loadAllData()">Load All Historical Data</button>
     </div>
 
     <div class="summary-cards">
-        <div class="card">
-            <h4>Latest Water Level</h4>
-            <span id="latestWater">-- %</span>
-        </div>
-        <div class="card">
-            <h4>Latest TDS</h4>
-            <span id="latestTDS">-- ppm</span>
-        </div>
-        <div class="card">
-            <h4>Latest Flow Rate</h4>
-            <span id="latestFlow">-- L/min</span>
-        </div>
-        <div class="card">
-            <h4>Latest Volume</h4>
-            <span id="latestVolume">-- L</span>
-        </div>
+        <div class="card"><h4>Latest Home TDS</h4><span id="latestHomeTDS">-- ppm</span></div>
+        <div class="card"><h4>Latest Source TDS</h4><span id="latestSourceTDS">-- ppm</span></div>
+        <div class="card"><h4>Latest Flow Rate</h4><span id="latestFlow">-- L/min</span></div>
+        <div class="card"><h4>Total Volume</h4><span id="latestVolume">-- L</span></div>
+        <div class="card"><h4>Pump Status</h4><span id="pumpStatus">--</span></div>
     </div>
 
     <div class="charts-grid">
-        <div class="chart-container">
-            <h3 style="text-align: center;">Water Level Over Time</h3>
-            <canvas id="waterLevelChart"></canvas>
-        </div>
-
-        <div class="chart-container">
-            <h3 style="text-align: center;">TDS Level Over Time</h3>
-            <canvas id="tdsChart"></canvas>
-        </div>
-
-        <div class="chart-container">
-            <h3 style="text-align: center;">Flow Rate Over Time</h3>
-            <canvas id="flowChart"></canvas>
-        </div>
+        <div class="chart-container"><h3 style="text-align: center;">Home TDS Over Time</h3><canvas id="homeTdsChart"></canvas></div>
+        <div class="chart-container"><h3 style="text-align: center;">Source TDS Over Time</h3><canvas id="sourceTdsChart"></canvas></div>
+        <div class="chart-container"><h3 style="text-align: center;">Flow Rate Over Time</h3><canvas id="flowChart"></canvas></div>
+        <div class="chart-container"><h3 style="text-align: center;">Total Volume Over Time</h3><canvas id="volumeChart"></canvas></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.min.js"></script>
+
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyA3yARNAUvpg2Q5ym2euy8Dafy3ecqo5yM",
-            authDomain: "watermonitoringsystem-d232c.firebaseapp.com",
-            databaseURL: "https://watermonitoringsystem-d232c-default-rtdb.asia-southeast1.firebasedatabase.app/",
-            projectId: "watermonitoringsystem-d232c",
-            storageBucket: "watermonitoringsystem-d232c.firebasestorage.app",
-            messagingSenderId: "1041155714114",
-            appId: "1:1041155714114:web:134bad725d3b2bb4d2d1db",
+            apiKey: "AIzaSyD6Cs9LM-y6gBkvDGlDAyn9VPi3F8Wd3uw",
+            authDomain: "monitoring-water-system-ca40a.firebaseapp.com",
+            databaseURL: "https://monitoring-water-system-ca40a-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "monitoring-water-system-ca40a",
+            storageBucket: "monitoring-water-system-ca40a.appspot.com",
+            messagingSenderId: "750846490741",
+            appId: "1:750846490741:web:03531a433a164bca59a03c"
         };
 
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const database = firebase.database();
 
-        let waterLevelChart, tdsChart, flowChart;
+        let homeTdsChart, sourceTdsChart, flowChart, volumeChart;
 
         function createLineChart(ctx, label, color) {
             return new Chart(ctx, {
                 type: "line",
                 data: {
                     labels: [],
-                    datasets: [
-                        {
-                            label: label,
-                            data: [],
-                            fill: true,
-                            backgroundColor: color + "33",
-                            borderColor: color,
-                            tension: 0.3,
-                            pointRadius: 4,
-                            pointBackgroundColor: color,
-                        },
-                    ],
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        fill: true,
+                        backgroundColor: color + "33",
+                        borderColor: color,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: color,
+                    }],
                 },
                 options: {
                     responsive: true,
@@ -186,33 +154,19 @@
                         legend: {
                             labels: {
                                 color: "#333",
-                                font: {
-                                    size: 14,
-                                },
+                                font: { size: 14 },
                             },
                         },
                     },
                     scales: {
                         x: {
-                            title: {
-                                display: true,
-                                text: "Time",
-                                color: "#555",
-                            },
-                            ticks: {
-                                color: "#777",
-                            },
+                            title: { display: true, text: "Time", color: "#555" },
+                            ticks: { color: "#777" },
                         },
                         y: {
                             beginAtZero: true,
-                            ticks: {
-                                color: "#777",
-                            },
-                            title: {
-                                display: true,
-                                text: label,
-                                color: "#555",
-                            },
+                            ticks: { color: "#777" },
+                            title: { display: true, text: label, color: "#555" },
                         },
                     },
                 },
@@ -220,108 +174,108 @@
         }
 
         function loadUserList() {
-            db.ref("users")
-                .once("value")
-                .then((snapshot) => {
-                    const users = snapshot.val();
-                    const selector = document.getElementById("userSelector");
-                    if (users) {
-                        Object.keys(users).forEach((uid) => {
-                            const user = users[uid];
-                            const option = document.createElement("option");
-                            option.value = uid;
-                            option.textContent = `${user.firstName} ${user.lastName}`;
-                            selector.appendChild(option);
-                        });
-                    }
-                });
-        }
-
-        function loadCharts() {
-            const userId = document.getElementById("userSelector").value;
-            if (!userId) return alert("Please select a user.");
-
-            const sensorsRef = db.ref("sensors/" + userId);
-
-            sensorsRef.once("value").then((snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                    alert("No data available for this user.");
-                    return;
-                }
-
-                const labels = [],
-                    waterLevel = [],
-                    tds = [],
-                    flow = [],
-                    volume = [];
-
-                Object.keys(data)
-                    .sort()
-                    .forEach((key) => {
-                        const entry = data[key];
-                        const timeLabel = new Date(Number(key)).toLocaleTimeString();
-                        labels.push(timeLabel);
-                        waterLevel.push(entry.waterLevel || 0);
-                        tds.push(entry.tds || 0);
-                        flow.push(entry.flow || 0);
-                        volume.push(entry.volume || 0);
+            database.ref("users").once("value").then((snapshot) => {
+                const users = snapshot.val();
+                const selector = document.getElementById("userSelector");
+                if (users) {
+                    Object.keys(users).forEach((uid) => {
+                        const user = users[uid];
+                        if (user.userType && user.userType.toLowerCase() === "admin") return;
+                        const option = document.createElement("option");
+                        option.value = uid;
+                        option.textContent = `${user.firstName} ${user.lastName}`;
+                        selector.appendChild(option);
                     });
-
-                document.getElementById("latestWater").innerText =
-                    (waterLevel.at(-1) ?? "--") + " %";
-                document.getElementById("latestTDS").innerText =
-                    (tds.at(-1) ?? "--") + " ppm";
-                document.getElementById("latestFlow").innerText =
-                    (flow.at(-1) ?? "--") + " L/min";
-                document.getElementById("latestVolume").innerText =
-                    (volume.at(-1) ?? "--") + " L";
-
-                if (waterLevelChart) {
-                    waterLevelChart.data.labels = labels;
-                    waterLevelChart.data.datasets[0].data = waterLevel;
-                    waterLevelChart.update();
-
-                    tdsChart.data.labels = labels;
-                    tdsChart.data.datasets[0].data = tds;
-                    tdsChart.update();
-
-                    flowChart.data.labels = labels;
-                    flowChart.data.datasets[0].data = flow;
-                    flowChart.update();
-                } else {
-                    waterLevelChart = createLineChart(
-                        document.getElementById("waterLevelChart"),
-                        "Water Level (%)",
-                        "#4f46e5"
-                    );
-                    tdsChart = createLineChart(
-                        document.getElementById("tdsChart"),
-                        "TDS (ppm)",
-                        "#d97706"
-                    );
-                    flowChart = createLineChart(
-                        document.getElementById("flowChart"),
-                        "Flow Rate (L/min)",
-                        "#dc2626"
-                    );
-
-                    waterLevelChart.data.labels = labels;
-                    waterLevelChart.data.datasets[0].data = waterLevel;
-                    waterLevelChart.update();
-
-                    tdsChart.data.labels = labels;
-                    tdsChart.data.datasets[0].data = tds;
-                    tdsChart.update();
-
-                    flowChart.data.labels = labels;
-                    flowChart.data.datasets[0].data = flow;
-                    flowChart.update();
                 }
             });
         }
 
-        loadUserList();
+        function formatTimeKey(key) {
+            return `${key.substring(6, 8)}/${key.substring(4, 6)} ${key.substring(8, 10)}:${key.substring(10, 12)}`;
+        }
+
+        function loadLatestData() {
+            const selectedUser = document.getElementById("userSelector").value;
+            if (!selectedUser) {
+                alert("Please select a user.");
+                return;
+            }
+
+            const tdsDataRef = database.ref("tds_data");
+            tdsDataRef.orderByKey().limitToLast(1).once("value").then((snapshot) => {
+                const data = snapshot.val();
+                if (!data) return alert("No sensor data available.");
+
+                const latestKey = Object.keys(data)[0];
+                const latestData = data[latestKey];
+
+                document.getElementById("latestHomeTDS").innerText = (latestData.home_tds || "--") + " ppm";
+                document.getElementById("latestSourceTDS").innerText = (latestData.source_tds || "--") + " ppm";
+                document.getElementById("latestFlow").innerText = (latestData.flow_rate || "--") + " L/min";
+                document.getElementById("latestVolume").innerText = (latestData.total_volume || "--") + " L";
+                document.getElementById("pumpStatus").innerText = latestData.pump_status ? "ON" : "OFF";
+            });
+        }
+
+        function loadAllData() {
+            const selectedUser = document.getElementById("userSelector").value;
+            if (!selectedUser) {
+                alert("Please select a user.");
+                return;
+            }
+
+            const tdsDataRef = database.ref("tds_data");
+            tdsDataRef.once("value").then((snapshot) => {
+                const data = snapshot.val();
+                if (!data) return alert("No sensor data available.");
+
+                const labels = [], homeTdsData = [], sourceTdsData = [], flowData = [], volumeData = [];
+
+                Object.keys(data).sort().forEach((key) => {
+                    const entry = data[key];
+                    labels.push(formatTimeKey(key));
+                    homeTdsData.push(entry.home_tds || 0);
+                    sourceTdsData.push(entry.source_tds || 0);
+                    flowData.push(entry.flow_rate || 0);
+                    volumeData.push(entry.total_volume || 0);
+                });
+
+                const latestKey = Object.keys(data).sort().pop();
+                const latestEntry = data[latestKey];
+                document.getElementById("latestHomeTDS").innerText = homeTdsData.at(-1) + " ppm";
+                document.getElementById("latestSourceTDS").innerText = sourceTdsData.at(-1) + " ppm";
+                document.getElementById("latestFlow").innerText = flowData.at(-1) + " L/min";
+                document.getElementById("latestVolume").innerText = volumeData.at(-1) + " L";
+                document.getElementById("pumpStatus").innerText = latestEntry.pump_status ? "ON" : "OFF";
+
+                if (!homeTdsChart) {
+                    homeTdsChart = createLineChart(document.getElementById("homeTdsChart"), "Home TDS (ppm)", "#4f46e5");
+                    sourceTdsChart = createLineChart(document.getElementById("sourceTdsChart"), "Source TDS (ppm)", "#d97706");
+                    flowChart = createLineChart(document.getElementById("flowChart"), "Flow Rate (L/min)", "#dc2626");
+                    volumeChart = createLineChart(document.getElementById("volumeChart"), "Total Volume (L)", "#059669");
+                }
+
+                homeTdsChart.data.labels = labels;
+                homeTdsChart.data.datasets[0].data = homeTdsData;
+                homeTdsChart.update();
+
+                sourceTdsChart.data.labels = labels;
+                sourceTdsChart.data.datasets[0].data = sourceTdsData;
+                sourceTdsChart.update();
+
+                flowChart.data.labels = labels;
+                flowChart.data.datasets[0].data = flowData;
+                flowChart.update();
+
+                volumeChart.data.labels = labels;
+                volumeChart.data.datasets[0].data = volumeData;
+                volumeChart.update();
+            });
+        }
+
+        window.addEventListener('load', function () {
+            loadUserList();
+        });
     </script>
 </body>
 </html>
