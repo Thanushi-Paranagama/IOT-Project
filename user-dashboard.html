@@ -150,6 +150,33 @@
         .status-fair { background: #fff3cd; color: #856404; }
         .status-poor { background: #f8d7da; color: #721c24; }
         
+        .purity-comparison {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .comparison-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .comparison-positive {
+            color: #27ae60;
+        }
+        
+        .comparison-negative {
+            color: #e74c3c;
+        }
+        
+        .comparison-neutral {
+            color: #f39c12;
+        }
+        
         .contact-section {
             background: white;
             padding: 40px;
@@ -225,6 +252,61 @@
             text-align: center;
             margin-top: 10px;
         }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .sensor-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .sensor-card h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .sensor-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .sensor-label {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+
+        .pump-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .pump-on {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .pump-off {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
@@ -268,27 +350,55 @@
                 <div id="qualityMetrics">
                     <div class="quality-indicator">
                         <div>
-                            <div style="font-size: 14px; color: #666;">TDS Level</div>
-                            <div class="quality-value" id="tdsValue">Loading...</div>
+                            <div style="font-size: 14px; color: #666;">Home TDS Level</div>
+                            <div class="quality-value" id="homeTdsValue">Loading...</div>
                         </div>
-                        <div class="quality-status" id="tdsStatus">-</div>
+                        <div class="quality-status" id="homeTdsStatus">-</div>
                     </div>
                     <div class="quality-indicator">
                         <div>
-                            <div style="font-size: 14px; color: #666;">pH Level</div>
-                            <div class="quality-value" id="phValue">Loading...</div>
+                            <div style="font-size: 14px; color: #666;">Source TDS Level</div>
+                            <div class="quality-value" id="sourceTdsValue">Loading...</div>
                         </div>
-                        <div class="quality-status" id="phStatus">-</div>
-                    </div>
-                    <div class="quality-indicator">
-                        <div>
-                            <div style="font-size: 14px; color: #666;">Temperature</div>
-                            <div class="quality-value" id="tempValue">Loading...</div>
-                        </div>
-                        <div class="quality-status" id="tempStatus">-</div>
+                        <div class="quality-status" id="sourceTdsStatus">-</div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Additional Sensor Data Grid -->
+        <div class="sensor-grid">
+            <div class="sensor-card">
+                <h4>Flow Rate</h4>
+                <div class="sensor-value" id="flowRateValue">Loading...</div>
+                <div class="sensor-label">L/min</div>
+            </div>
+            
+            <div class="sensor-card">
+                <h4>Total Volume</h4>
+                <div class="sensor-value" id="totalVolumeValue">Loading...</div>
+                <div class="sensor-label">Liters</div>
+            </div>
+            
+            <div class="sensor-card">
+                <h4>Tank Distance</h4>
+                <div class="sensor-value" id="tankDistanceValue">Loading...</div>
+                <div class="sensor-label">cm</div>
+            </div>
+            
+            <div class="sensor-card">
+                <h4>Pump Status</h4>
+                <div class="sensor-value" id="pumpStatusValue">Loading...</div>
+                <div class="pump-status" id="pumpStatusIndicator">-</div>
+            </div>
+        </div>
+
+        <!-- Purity Comparison Section -->
+        <div class="purity-comparison">
+            <h3>Purity Analysis</h3>
+            <p>Difference between Home and Source Water Quality</p>
+            <div class="comparison-value" id="purityDifference">Loading...</div>
+            <div id="purityAnalysis">Analyzing water quality difference...</div>
         </div>
 
         <!-- Contact Form Section -->
@@ -311,6 +421,7 @@
                         <option value="billing">Billing Question</option>
                         <option value="feature">Feature Request</option>
                         <option value="general">General Inquiry</option>
+                        <option value="other">Other</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -348,6 +459,10 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
+        // Global variables to store TDS values for comparison
+        let homeTdsValue = 0;
+        let sourceTdsValue = 0;
+
         // Check authentication
         auth.onAuthStateChanged((user) => {
             if (user) {
@@ -371,28 +486,66 @@
 
         // Load sensor data from Firebase
         function loadSensorData() {
-            // Water level data
-            database.ref('sensors/waterLevel').on('value', (snapshot) => {
+            // Water level data from tank_level
+            database.ref('tank_level/current').on('value', (snapshot) => {
                 const waterLevel = snapshot.val() || 0;
                 updateWaterLevelChart(waterLevel);
             });
 
-            // TDS sensor data
-            database.ref('sensors/tds').on('value', (snapshot) => {
-                const tds = snapshot.val() || 0;
-                updateTDSDisplay(tds);
+            // Tank distance data
+            database.ref('tank_level/distance').on('value', (snapshot) => {
+                const distance = snapshot.val() || 0;
+                document.getElementById('tankDistanceValue').textContent = distance.toFixed(2);
             });
 
-            // pH sensor data
-            database.ref('sensors/ph').on('value', (snapshot) => {
-                const ph = snapshot.val() || 7.0;
-                updatePHDisplay(ph);
+            // Pump control status
+            database.ref('pump_control/should_run').on('value', (snapshot) => {
+                const shouldRun = snapshot.val();
+                const statusElement = document.getElementById('pumpStatusValue');
+                const indicatorElement = document.getElementById('pumpStatusIndicator');
+                
+                if (shouldRun !== null) {
+                    statusElement.textContent = shouldRun ? 'ON' : 'OFF';
+                    indicatorElement.textContent = shouldRun ? 'RUNNING' : 'STOPPED';
+                    indicatorElement.className = shouldRun ? 'pump-status pump-on' : 'pump-status pump-off';
+                } else {
+                    statusElement.textContent = 'Unknown';
+                    indicatorElement.textContent = 'NO DATA';
+                    indicatorElement.className = 'pump-status pump-off';
+                }
             });
 
-            // Temperature sensor data
-            database.ref('sensors/temperature').on('value', (snapshot) => {
-                const temp = snapshot.val() || 25;
-                updateTempDisplay(temp);
+            // Load latest TDS data
+            database.ref('tds_data').orderByKey().limitToLast(1).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const latestKey = Object.keys(data)[0];
+                    const latestData = data[latestKey];
+                    
+                    // Home TDS
+                    if (latestData.home_tds !== undefined) {
+                        homeTdsValue = latestData.home_tds;
+                        updateTDSDisplay(homeTdsValue, 'home');
+                    }
+                    
+                    // Source TDS
+                    if (latestData.source_tds !== undefined) {
+                        sourceTdsValue = latestData.source_tds;
+                        updateTDSDisplay(sourceTdsValue, 'source');
+                    }
+                    
+                    // Flow rate
+                    if (latestData.flow_rate !== undefined) {
+                        document.getElementById('flowRateValue').textContent = latestData.flow_rate.toFixed(2);
+                    }
+                    
+                    // Total volume
+                    if (latestData.total_volume !== undefined) {
+                        document.getElementById('totalVolumeValue').textContent = latestData.total_volume.toFixed(2);
+                    }
+                    
+                    updatePurityComparison();
+                }
             });
         }
 
@@ -405,7 +558,7 @@
             const offset = circumference - (level / 100) * circumference;
             
             circle.style.strokeDashoffset = offset;
-            valueDisplay.textContent = level + '%';
+            valueDisplay.textContent = level.toFixed(1) + '%';
             
             // Change color based on level
             if (level < 20) {
@@ -418,8 +571,11 @@
         }
 
         // Update TDS display
-        function updateTDSDisplay(tds) {
-            document.getElementById('tdsValue').textContent = tds + ' ppm';
+        function updateTDSDisplay(tds, type) {
+            const valueId = type === 'home' ? 'homeTdsValue' : 'sourceTdsValue';
+            const statusId = type === 'home' ? 'homeTdsStatus' : 'sourceTdsStatus';
+            
+            document.getElementById(valueId).textContent = tds.toFixed(1) + ' ppm';
             
             let status, statusClass;
             if (tds < 150) {
@@ -436,57 +592,50 @@
                 statusClass = 'status-poor';
             }
             
-            const statusElement = document.getElementById('tdsStatus');
+            const statusElement = document.getElementById(statusId);
             statusElement.textContent = status;
             statusElement.className = 'quality-status ' + statusClass;
         }
 
-        // Update pH display
-        function updatePHDisplay(ph) {
-            document.getElementById('phValue').textContent = ph.toFixed(1);
+        // Update purity comparison
+        function updatePurityComparison() {
+            const differenceElement = document.getElementById('purityDifference');
+            const analysisElement = document.getElementById('purityAnalysis');
             
-            let status, statusClass;
-            if (ph >= 6.5 && ph <= 8.5) {
-                status = 'Excellent';
-                statusClass = 'status-excellent';
-            } else if (ph >= 6.0 && ph <= 9.0) {
-                status = 'Good';
-                statusClass = 'status-good';
-            } else if (ph >= 5.5 && ph <= 9.5) {
-                status = 'Fair';
-                statusClass = 'status-fair';
+            const difference = homeTdsValue - sourceTdsValue;
+            const absoluteDifference = Math.abs(difference);
+            
+            // Update difference display
+            if (difference > 0) {
+                differenceElement.textContent = `+${difference.toFixed(1)} ppm`;
+                differenceElement.className = 'comparison-value comparison-negative';
+            } else if (difference < 0) {
+                differenceElement.textContent = `${difference.toFixed(1)} ppm`;
+                differenceElement.className = 'comparison-value comparison-positive';
             } else {
-                status = 'Poor';
-                statusClass = 'status-poor';
+                differenceElement.textContent = `${difference.toFixed(1)} ppm`;
+                differenceElement.className = 'comparison-value comparison-neutral';
             }
             
-            const statusElement = document.getElementById('phStatus');
-            statusElement.textContent = status;
-            statusElement.className = 'quality-status ' + statusClass;
-        }
-
-        // Update temperature display
-        function updateTempDisplay(temp) {
-            document.getElementById('tempValue').textContent = temp + '°C';
-            
-            let status, statusClass;
-            if (temp >= 20 && temp <= 25) {
-                status = 'Excellent';
-                statusClass = 'status-excellent';
-            } else if (temp >= 18 && temp <= 28) {
-                status = 'Good';
-                statusClass = 'status-good';
-            } else if (temp >= 15 && temp <= 30) {
-                status = 'Fair';
-                statusClass = 'status-fair';
+            // Update analysis text
+            let analysisText;
+            if (absoluteDifference < 50) {
+                analysisText = "Water quality is similar between home and source. Minimal treatment needed.";
+            } else if (difference > 0) {
+                if (absoluteDifference > 200) {
+                    analysisText = "Home water has significantly higher TDS than source. Check filtration system.";
+                } else {
+                    analysisText = "Home water has higher TDS than source. Consider system maintenance.";
+                }
             } else {
-                status = 'Poor';
-                statusClass = 'status-poor';
+                if (absoluteDifference > 200) {
+                    analysisText = "Source water has significantly higher TDS than home. Good filtration performance.";
+                } else {
+                    analysisText = "Source water has higher TDS than home. Filtration is working effectively.";
+                }
             }
             
-            const statusElement = document.getElementById('tempStatus');
-            statusElement.textContent = status;
-            statusElement.className = 'quality-status ' + statusClass;
+            analysisElement.textContent = analysisText;
         }
 
         // Contact form handler
