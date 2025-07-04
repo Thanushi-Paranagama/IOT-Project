@@ -488,7 +488,7 @@
             loadStatistics();
         }
 
-        // Load real-time sensor data from your Arduino structure
+        // Load real-time sensor data from Arduino structure
         function loadRealTimeSensorData() {
             
             // Pump control status
@@ -508,7 +508,7 @@
                 }
             });
 
-            // Load latest TDS data from your time-based structure
+            // Load latest TDS data from time-based structure
             database.ref('tds_data').limitToLast(1).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -593,26 +593,6 @@
                 })
                 .catch((error) => {
                     messageDiv.innerHTML = '<div class="error-message">Error updating TDS level</div>';
-                });
-        }
-
-        function updateTemp() {
-            const value = document.getElementById('tempInput').value;
-            const messageDiv = document.getElementById('tempMessage');
-            
-            if (value === '') {
-                messageDiv.innerHTML = '<div class="error-message">Please enter a flow rate value</div>';
-                return;
-            }
-            
-            database.ref('sensors/temperature').set(parseFloat(value))
-                .then(() => {
-                    messageDiv.innerHTML = '<div class="success-message">Water Flow updated successfully!</div>';
-                    document.getElementById('tempInput').value = '';
-                    setTimeout(() => messageDiv.innerHTML = '', 3000);
-                })
-                .catch((error) => {
-                    messageDiv.innerHTML = '<div class="error-message">Error updating Water Flow</div>';
                 });
         }
 
