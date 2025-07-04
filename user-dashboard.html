@@ -73,6 +73,38 @@
             text-align: center;
         }
         
+        .alert-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert-section.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        
+        .alert-section.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .alert-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .alert-section.error h4 {
+            color: #721c24;
+        }
+        
+        .alert-section.success h4 {
+            color: #155724;
+        }
+        
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -307,13 +339,46 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        .sms-status {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .sms-status h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .sms-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .sms-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .sms-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="header-content">
             <div class="logo">
-                <h1>AquaMonitor Dashboard</h1>
+                <h1>Hybrid Purity Checker User Dashboard</h1>
             </div>
             <div class="user-info">
                 <span id="welcomeText">Welcome, User!</span>
@@ -326,6 +391,21 @@
         <div class="welcome-section">
             <h2>Water Quality Monitoring Dashboard</h2>
             <p>Real-time monitoring of your water system parameters</p>
+        </div>
+
+        <!-- Alert Section -->
+        <div id="alertSection" class="alert-section">
+            <h4 id="alertTitle">Alert</h4>
+            <p id="alertMessage"></p>
+        </div>
+
+        <!-- SMS Status Section -->
+        <div class="sms-status">
+            <h4>SMS Alert Status</h4>
+            <div id="smsStatus" class="sms-indicator sms-inactive">SMS Alerts Inactive</div>
+            <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                Last SMS sent: <span id="lastSmsTime">Never</span>
+            </p>
         </div>
 
         <div class="dashboard-grid">
@@ -378,18 +458,6 @@
                 <h4>Total Volume</h4>
                 <div class="sensor-value" id="totalVolumeValue">Loading...</div>
                 <div class="sensor-label">Liters</div>
-            </div>
-            
-            <div class="sensor-card">
-                <h4>Tank Distance</h4>
-                <div class="sensor-value" id="tankDistanceValue">Loading...</div>
-                <div class="sensor-label">cm</div>
-            </div>
-            
-            <div class="sensor-card">
-                <h4>Pump Status</h4>
-                <div class="sensor-value" id="pumpStatusValue">Loading...</div>
-                <div class="pump-status" id="pumpStatusIndicator">-</div>
             </div>
         </div>
 
@@ -458,24 +526,39 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
+        const BACKEND_URL = 'http://10.136.61.28:3000';
 
-        // Global variables to store TDS values for comparison
+        // Notify.lk configuration - CORRECTED
+        const NOTIFY_LK_CONFIG = {
+            USER_ID: "29795",
+            API_KEY: "pdYrpDtV64kvjYHT1ER4",
+            SENDER_ID: "NotifyDEMO",
+            ENDPOINT: "https://app.notify.lk/api/v1/send" // Correct endpoint
+        };
+
+        // Global variables
         let homeTdsValue = 0;
         let sourceTdsValue = 0;
+        let currentUser = null;
+        let lastAlertTime = 0;
+        let lastSmsTime = null;
+        const ALERT_COOLDOWN = 300000; // 5 minutes in milliseconds
 
         // Check authentication
         auth.onAuthStateChanged((user) => {
             if (user) {
+                currentUser = user;
                 // User is signed in
                 database.ref('users/' + user.uid).once('value').then((snapshot) => {
                     const userData = snapshot.val();
                     if (userData) {
-                        document.getElementById('welcomeText').textContent = `Welcome, ${userData.firstName}!`;
-                        document.getElementById('contactName').value = `${userData.firstName} ${userData.lastName}`;
+                        document.getElementById('welcomeText').textContent = Welcome, ${userData.firstName}!;
+                        document.getElementById('contactName').value = ${userData.firstName} ${userData.lastName};
                         document.getElementById('contactEmail').value = userData.email;
                         
                         // Load real-time data
                         loadSensorData();
+                        loadSmsHistory();
                     }
                 });
             } else {
@@ -484,70 +567,266 @@
             }
         });
 
-        // Load sensor data from Firebase
-        function loadSensorData() {
-            // Water level data from tank_level
-            database.ref('tank_level/current').on('value', (snapshot) => {
-                const waterLevel = snapshot.val() || 0;
-                updateWaterLevelChart(waterLevel);
-            });
-
-            // Tank distance data
-            database.ref('tank_level/distance').on('value', (snapshot) => {
-                const distance = snapshot.val() || 0;
-                document.getElementById('tankDistanceValue').textContent = distance.toFixed(2);
-            });
-
-            // Pump control status
-            database.ref('pump_control/should_run').on('value', (snapshot) => {
-                const shouldRun = snapshot.val();
-                const statusElement = document.getElementById('pumpStatusValue');
-                const indicatorElement = document.getElementById('pumpStatusIndicator');
-                
-                if (shouldRun !== null) {
-                    statusElement.textContent = shouldRun ? 'ON' : 'OFF';
-                    indicatorElement.textContent = shouldRun ? 'RUNNING' : 'STOPPED';
-                    indicatorElement.className = shouldRun ? 'pump-status pump-on' : 'pump-status pump-off';
-                } else {
-                    statusElement.textContent = 'Unknown';
-                    indicatorElement.textContent = 'NO DATA';
-                    indicatorElement.className = 'pump-status pump-off';
-                }
-            });
-
-            // Load latest TDS data
-            database.ref('tds_data').orderByKey().limitToLast(1).on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    const latestKey = Object.keys(data)[0];
-                    const latestData = data[latestKey];
-                    
-                    // Home TDS
-                    if (latestData.home_tds !== undefined) {
-                        homeTdsValue = latestData.home_tds;
-                        updateTDSDisplay(homeTdsValue, 'home');
+        // Load SMS history
+        function loadSmsHistory() {
+            if (currentUser) {
+                database.ref('sms-alerts/' + currentUser.uid).orderByKey().limitToLast(1).once('value').then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const latestKey = Object.keys(data)[0];
+                        const latestAlert = data[latestKey];
+                        lastSmsTime = latestAlert.timestamp;
+                        
+                        const date = new Date(latestAlert.timestamp);
+                        document.getElementById('lastSmsTime').textContent = date.toLocaleString();
+                        
+                        // Update SMS status
+                        const smsStatus = document.getElementById('smsStatus');
+                        smsStatus.textContent = 'SMS Alerts Active';
+                        smsStatus.className = 'sms-indicator sms-active';
                     }
-                    
-                    // Source TDS
-                    if (latestData.source_tds !== undefined) {
-                        sourceTdsValue = latestData.source_tds;
-                        updateTDSDisplay(sourceTdsValue, 'source');
-                    }
-                    
-                    // Flow rate
-                    if (latestData.flow_rate !== undefined) {
-                        document.getElementById('flowRateValue').textContent = latestData.flow_rate.toFixed(2);
-                    }
-                    
-                    // Total volume
-                    if (latestData.total_volume !== undefined) {
-                        document.getElementById('totalVolumeValue').textContent = latestData.total_volume.toFixed(2);
-                    }
-                    
-                    updatePurityComparison();
-                }
-            });
+                });
+            }
         }
+
+        // Send SMS Alert using backend server
+async function sendSmsAlert(phoneNumber, message) {
+    try {
+        console.log('Sending SMS via backend server...');
+        
+        const response = await fetch(${BACKEND_URL}/send-sms, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                phone: phoneNumber,
+                message: message
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Log SMS to Firebase
+            const smsLogData = {
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                phone: phoneNumber,
+                message: message,
+                tdsValue: homeTdsValue,
+                status: 'sent',
+                messageId: result.data?.message_id
+            };
+            
+            await database.ref('sms-alerts/' + currentUser.uid).push(smsLogData);
+            
+            // Update UI
+            showAlert('SMS Alert Sent Successfully!', 'Your phone will receive a water quality alert shortly.', 'success');
+            
+            // Update SMS status
+            const smsStatus = document.getElementById('smsStatus');
+            smsStatus.textContent = 'SMS Alert Sent';
+            smsStatus.className = 'sms-indicator sms-active';
+            
+            const now = new Date();
+            document.getElementById('lastSmsTime').textContent = now.toLocaleString();
+            
+            return true;
+        } else {
+            throw new Error(result.message || 'SMS sending failed');
+        }
+    } catch (error) {
+        console.error('SMS sending error:', error);
+        
+        // Show appropriate error message
+        let errorMessage = 'Could not send SMS alert. ';
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage += 'Backend server is not running.';
+        } else if (error.message.includes('timeout')) {
+            errorMessage += 'Request timed out.';
+        } else {
+            errorMessage += 'Please check your connection.';
+        }
+        
+        showAlert('SMS Alert Failed', errorMessage, 'error');
+        
+        // Log failed SMS attempt to Firebase
+        try {
+            const smsLogData = {
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                phone: phoneNumber,
+                message: message,
+                tdsValue: homeTdsValue,
+                status: 'failed',
+                error: error.message
+            };
+            
+            await database.ref('sms-alerts/' + currentUser.uid).push(smsLogData);
+        } catch (logError) {
+            console.error('Failed to log SMS error:', logError);
+        }
+        
+        return false;
+    }
+}
+
+// Optional: Add a function to test backend connectivity
+async function testBackendConnection() {
+    try {
+        const response = await fetch(${BACKEND_URL}/health);
+        const result = await response.json();
+        
+        if (result.status === 'OK') {
+            console.log('Backend server is running:', result);
+            return true;
+        } else {
+            console.error('Backend server health check failed:', result);
+            return false;
+        }
+    } catch (error) {
+        console.error('Cannot connect to backend server:', error);
+        showAlert('Backend Connection Error', 'SMS service is currently unavailable. Please contact support.', 'error');
+        return false;
+    }
+}
+
+// Call this when the page loads to check backend connectivity
+document.addEventListener('DOMContentLoaded', () => {
+    // Test backend connection
+    testBackendConnection();
+    
+    // Set up real-time listeners
+    loadSensorData();
+});
+
+        // Show alert message
+        function showAlert(title, message, type = 'warning') {
+            const alertSection = document.getElementById('alertSection');
+            const alertTitle = document.getElementById('alertTitle');
+            const alertMessage = document.getElementById('alertMessage');
+            
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+            
+            alertSection.className = alert-section ${type};
+            alertSection.style.display = 'block';
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                alertSection.style.display = 'none';
+            }, 20000);
+        }
+
+        // Check TDS level and send alert if needed
+        async function checkTdsAndAlert(tdsValue) {
+            const currentTime = Date.now();
+            
+            // Check if TDS is in poor range (>= 100 ppm)
+            if (tdsValue >= 100) {
+                // Check cooldown period to avoid spam
+                if (currentTime - lastAlertTime > ALERT_COOLDOWN) {
+                    lastAlertTime = currentTime;
+                    
+                    // Get user's phone number
+                    const userSnapshot = await database.ref('users/' + currentUser.uid).once('value');
+                    const userData = userSnapshot.val();
+                    
+                    if (userData && userData.phone) {
+                        const message = ` WATER QUALITY ALERT: Your home water TDS level is ${tdsValue.toFixed(1)} ppm (Poor Quality). Please check your water filtration system immediately. - Hybrid Purity Checker`;
+                        
+                        await sendSmsAlert(userData.phone, message);
+                        
+                        // Show dashboard alert
+                        showAlert(
+                            'Poor Water Quality Detected!',
+                            Home TDS level is ${tdsValue.toFixed(1)} ppm. SMS alert sent to your registered phone number.,
+                            'error'
+                        );
+                    }
+                }
+            }
+        }
+
+        // Global variable to track if listeners are already set up
+let listenersInitialized = false;
+
+// Modified loadSensorData function
+function loadSensorData() {
+    // Only set up listeners once
+    if (!listenersInitialized) {
+        listenersInitialized = true;
+        
+        // Water level data from tank_level
+        database.ref('tank_level/current').on('value', (snapshot) => {
+            const waterLevel = snapshot.val() || 0;
+            updateWaterLevelChart(waterLevel);
+        });
+
+        // Tank distance data
+        database.ref('tank_level/distance').on('value', (snapshot) => {
+            const distance = snapshot.val() || 0;
+            document.getElementById('tankDistanceValue').textContent = distance.toFixed(2);
+        });
+
+        // Pump control status
+        database.ref('pump_control/should_run').on('value', (snapshot) => {
+            const shouldRun = snapshot.val();
+            const statusElement = document.getElementById('pumpStatusValue');
+            const indicatorElement = document.getElementById('pumpStatusIndicator');
+            
+            if (shouldRun !== null) {
+                statusElement.textContent = shouldRun ? 'ON' : 'OFF';
+                indicatorElement.textContent = shouldRun ? 'RUNNING' : 'STOPPED';
+                indicatorElement.className = shouldRun ? 'pump-status pump-on' : 'pump-status pump-off';
+            } else {
+                statusElement.textContent = 'Unknown';
+                indicatorElement.textContent = 'NO DATA';
+                indicatorElement.className = 'pump-status pump-off';
+            }
+        });
+
+        // Load latest TDS data
+        database.ref('tds_data').orderByKey().limitToLast(1).on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const latestKey = Object.keys(data)[0];
+                const latestData = data[latestKey];
+                
+                // Home TDS
+                if (latestData.home_tds !== undefined) {
+                    const newHomeTdsValue = latestData.home_tds;
+                    
+                    // Check if TDS value changed significantly
+                    if (Math.abs(newHomeTdsValue - homeTdsValue) > 10) {
+                        homeTdsValue = newHomeTdsValue;
+                        updateTDSDisplay(homeTdsValue, 'home');
+                        
+                        // Check for poor water quality and send alert
+                        checkTdsAndAlert(homeTdsValue);
+                    }
+                }
+                
+                // Source TDS
+                if (latestData.source_tds !== undefined) {
+                    sourceTdsValue = latestData.source_tds;
+                    updateTDSDisplay(sourceTdsValue, 'source');
+                }
+                
+                // Flow rate
+                if (latestData.flow_rate !== undefined) {
+                    document.getElementById('flowRateValue').textContent = latestData.flow_rate.toFixed(2);
+                }
+                
+                // Total volume
+                if (latestData.total_volume !== undefined) {
+                    document.getElementById('totalVolumeValue').textContent = latestData.total_volume.toFixed(2);
+                }
+                
+                updatePurityComparison();
+            }
+        });
+    }
+}
 
         // Update water level pie chart
         function updateWaterLevelChart(level) {
@@ -578,13 +857,13 @@
             document.getElementById(valueId).textContent = tds.toFixed(1) + ' ppm';
             
             let status, statusClass;
-            if (tds < 150) {
+            if (tds < 25) {
                 status = 'Excellent';
                 statusClass = 'status-excellent';
-            } else if (tds < 300) {
+            } else if (tds < 50) {
                 status = 'Good';
                 statusClass = 'status-good';
-            } else if (tds < 500) {
+            } else if (tds < 100) {
                 status = 'Fair';
                 statusClass = 'status-fair';
             } else {
@@ -607,13 +886,13 @@
             
             // Update difference display
             if (difference > 0) {
-                differenceElement.textContent = `+${difference.toFixed(1)} ppm`;
+                differenceElement.textContent = +${difference.toFixed(1)} ppm;
                 differenceElement.className = 'comparison-value comparison-negative';
             } else if (difference < 0) {
-                differenceElement.textContent = `${difference.toFixed(1)} ppm`;
+                differenceElement.textContent = ${difference.toFixed(1)} ppm;
                 differenceElement.className = 'comparison-value comparison-positive';
             } else {
-                differenceElement.textContent = `${difference.toFixed(1)} ppm`;
+                differenceElement.textContent = ${difference.toFixed(1)} ppm;
                 differenceElement.className = 'comparison-value comparison-neutral';
             }
             
@@ -622,13 +901,13 @@
             if (absoluteDifference < 50) {
                 analysisText = "Water quality is similar between home and source. Minimal treatment needed.";
             } else if (difference > 0) {
-                if (absoluteDifference > 200) {
+                if (absoluteDifference > 50) {
                     analysisText = "Home water has significantly higher TDS than source. Check filtration system.";
                 } else {
                     analysisText = "Home water has higher TDS than source. Consider system maintenance.";
                 }
             } else {
-                if (absoluteDifference > 200) {
+                if (absoluteDifference > 50) {
                     analysisText = "Source water has significantly higher TDS than home. Good filtration performance.";
                 } else {
                     analysisText = "Source water has higher TDS than home. Filtration is working effectively.";
@@ -657,9 +936,16 @@
                 await database.ref('contact-messages').push(formData);
                 messageDiv.innerHTML = '<div class="success-message">Message sent successfully! We will get back to you soon.</div>';
                 document.getElementById('contactForm').reset();
-                document.getElementById('contactName').value = auth.currentUser.displayName || '';
-                document.getElementById('contactEmail').value = auth.currentUser.email || '';
+                
+                // Get current user data to refill form fields
+                const userSnapshot = await database.ref('users/' + auth.currentUser.uid).once('value');
+                const userData = userSnapshot.val();
+                if (userData) {
+                    document.getElementById('contactName').value = ${userData.firstName} ${userData.lastName};
+                    document.getElementById('contactEmail').value = userData.email;
+                }
             } catch (error) {
+                console.error('Error sending message:', error);
                 messageDiv.innerHTML = '<div class="error-message">Failed to send message. Please try again.</div>';
             }
         });
@@ -668,8 +954,18 @@
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error('Error signing out:', error);
             });
         }
+
+    
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set up real-time listeners
+            loadSensorData();
+        });
     </script>
 </body>
 </html>
