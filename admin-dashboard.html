@@ -338,7 +338,7 @@
     <header class="header">
         <div class="header-content">
             <div class="logo">
-                <h1>AquaMonitor Admin</h1>
+                <h1>Hybrid Purity Checker Admin</h1>
             </div>
             <div class="user-info">
                 <span id="welcomeText">Welcome, Admin!</span>
@@ -406,42 +406,6 @@
                     style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 16px;">
                 Check
             </button>
-        </div>
-
-        <!-- Sensor Controls -->
-        <div class="admin-grid">
-            <div class="card">
-                <h3>Water Level Control</h3>
-                <div class="current-value" id="currentWaterLevel">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="waterLevelInput">Water Level (%):</label>
-                    <input type="number" id="waterLevelInput" min="0" max="100" placeholder="Enter water level">
-                    <button class="update-btn" onclick="updateWaterLevel()">Update Water Level</button>
-                    <div id="waterLevelMessage"></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>TDS Sensor Control</h3>
-                <div class="current-value" id="currentTDS">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="tdsInput">TDS Level (ppm):</label>
-                    <input type="number" id="tdsInput" min="0" placeholder="Enter TDS level">
-                    <button class="update-btn" onclick="updateTDS()">Update TDS Level</button>
-                    <div id="tdsMessage"></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Flow Rate Control</h3>
-                <div class="current-value" id="currentTemp">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="tempInput">Flow Rate(L/min):</label>
-                    <input type="number" id="tempInput" placeholder="Enter flow rate">
-                    <button class="update-btn" onclick="updateTemp()">Update Water Flow</button>
-                    <div id="tempMessage"></div>
-                </div>
-            </div>
         </div>
 
         <!-- Users Section -->
@@ -551,9 +515,7 @@
                     const latestKey = Object.keys(data)[0];
                     const latestData = data[latestKey];
                     const timestamp = latestData.timestamp || 'Unknown';
-
-                
-
+                    
                     // Source TDS
                     if (latestData.source_tds !== undefined) {
                         document.getElementById('sourceTdsValue').textContent = `${latestData.source_tds.toFixed(1)} ppm`;
