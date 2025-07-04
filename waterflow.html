@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - Water Flow</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 400px !important;
+    }
+
+    .logout-btn {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Water Flow Monitoring</h1>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </header>
+
+  <div class="container">
+    <h2>Daily Water Flow (Last 7 Days)</h2>
+    <canvas id="flowChart"></canvas>
+  </div>
+
+  <!-- Firebase and Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-auth-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6Cs9LM-y6gBkvDGlDAyn9VPi3F8Wd3uw",
+      authDomain: "monitoring-water-system-ca40a.firebaseapp.com",
+      databaseURL: "https://monitoring-water-system-ca40a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "monitoring-water-system-ca40a",
+      storageBucket: "monitoring-water-system-ca40a.appspot.com",
+      messagingSenderId: "750846490741",
+      appId: "1:750846490741:web:03531a433a164bca59a03c"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    const ctx = document.getElementById('flowChart').getContext('2d');
+    let flowChart;
+
+    function logout() {
+      auth.signOut().then(() => {
+        window.location.href = 'login.html';
+      });
+    }
+
+    function fetchWaterFlowData() {
+      const path = 'sensors/waterflow/daily'; // Adjust path if your structure is different
+
+      database.ref(path).limitToLast(7).once('value', snapshot => {
+        const data = snapshot.val() || {};
+        const labels = [];
+        const values = [];
+
+        const sortedDates = Object.keys(data).sort(); // Ensure chronological order
+
+        sortedDates.forEach(date => {
+          labels.push(date);
+          values.push(data[date]);
+        });
+
+        drawChart(labels, values);
+      });
+    }
+
+    function drawChart(labels, values) {
+      if (flowChart) flowChart.destroy();
+
+      flowChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Water Flow (liters)',
+            data: values,
+            backgroundColor: '#667eea'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Liters'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = 'login.html';
+      } else {
+        fetchWaterFlowData();
+      }
+    });
+  </script>
+</body>
+</html>
