@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -256,13 +257,89 @@
             color: #666;
             font-size: 14px;
         }
+
+        /* Additional styles for sensor data display */
+        .sensor-data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .sensor-data-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .sensor-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .sensor-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .sensor-timestamp {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .tank-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .tank-low {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .tank-medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .tank-high {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .pump-status {
+            margin-top: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .pump-on {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .pump-off {
+            background: #ffebee;
+            color: #c62828;
+        }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="header-content">
             <div class="logo">
-                <h1>AquaMonitor Admin</h1>
+                <h1>Hybrid Purity Checker Admin</h1>
             </div>
             <div class="user-info">
                 <span id="welcomeText">Welcome, Admin!</span>
@@ -293,51 +370,43 @@
             </div>
         </div>
 
-        <!-- Sensor Controls -->
-        <div class="admin-grid">
-            <div class="card">
-                <h3>Water Level Control</h3>
-                <div class="current-value" id="currentWaterLevel">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="waterLevelInput">Water Level (%):</label>
-                    <input type="number" id="waterLevelInput" min="0" max="100" placeholder="Enter water level">
-                    <button class="update-btn" onclick="updateWaterLevel()">Update Water Level</button>
-                    <div id="waterLevelMessage"></div>
+        <!-- Real-time Sensor Data Display -->
+        <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 30px;">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #333;">Real-time Sensor Data</h2>
+            <div class="sensor-data-grid">
+                
+                
+                <div class="sensor-data-card">
+                    <div class="sensor-label">Source TDS Level</div>
+                    <div class="sensor-value" id="sourceTdsValue">Loading...</div>
+                    <div class="sensor-timestamp" id="sourceTdsTime">--</div>
+                </div>
+                <div class="sensor-data-card">
+                    <div class="sensor-label">Flow Rate</div>
+                    <div class="sensor-value" id="flowRateValue">Loading...</div>
+                    <div class="sensor-timestamp" id="flowRateTime">--</div>
+                </div>
+                <div class="sensor-data-card">
+                    <div class="sensor-label">Total Volume</div>
+                    <div class="sensor-value" id="totalVolumeValue">Loading...</div>
+                    <div class="sensor-timestamp" id="totalVolumeTime">--</div>
+                </div>
+                <div class="sensor-data-card">
+                    <div class="sensor-label">Pump Status</div>
+                    <div class="sensor-value" id="pumpStatusValue">Loading...</div>
+                    <div id="pumpStatus" class="pump-status">--</div>
                 </div>
             </div>
+        </div>
 
-            <div class="card">
-                <h3>TDS Sensor Control</h3>
-                <div class="current-value" id="currentTDS">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="tdsInput">TDS Level (ppm):</label>
-                    <input type="number" id="tdsInput" min="0" placeholder="Enter TDS level">
-                    <button class="update-btn" onclick="updateTDS()">Update TDS Level</button>
-                    <div id="tdsMessage"></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>pH Sensor Control</h3>
-                <div class="current-value" id="currentPH">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="phInput">pH Level:</label>
-                    <input type="number" id="phInput" min="0" max="14" step="0.1" placeholder="Enter pH level">
-                    <button class="update-btn" onclick="updatePH()">Update pH Level</button>
-                    <div id="phMessage"></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Temperature Control</h3>
-                <div class="current-value" id="currentTemp">Current: Loading...</div>
-                <div class="sensor-control">
-                    <label for="tempInput">Temperature (°C):</label>
-                    <input type="number" id="tempInput" placeholder="Enter temperature">
-                    <button class="update-btn" onclick="updateTemp()">Update Temperature</button>
-                    <div id="tempMessage"></div>
-                </div>
-            </div>
+        <!-- Users' Water Quality Section -->
+        <div class="card" style="margin-bottom: 30px; text-align: center;">
+            <h2 style="margin-bottom: 20px; color: #333;">Users' Water Quality</h2>
+            <p style="margin-bottom: 20px; color: #666;">Check detailed analytics of water quality across all users</p>
+            <button onclick="location.href='water-quality.html'" 
+                    style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                Check
+            </button>
         </div>
 
         <!-- Users Section -->
@@ -402,7 +471,7 @@
                         document.getElementById('welcomeText').textContent = `Welcome, ${userData.firstName}!`;
                         loadDashboardData();
                     } else {
-                        // Not an admin, redirect
+                        // Not an admin, redirects
                         window.location.href = 'login.html';
                     }
                 });
@@ -414,12 +483,62 @@
         // Load dashboard data
         function loadDashboardData() {
             loadSensorData();
+            loadRealTimeSensorData();
             loadUsers();
             loadContactMessages();
             loadStatistics();
         }
 
-        // Load current sensor data
+        // Load real-time sensor data from Arduino structure
+        function loadRealTimeSensorData() {
+            
+            // Pump control status
+            database.ref('pump_control/should_run').on('value', (snapshot) => {
+                const shouldRun = snapshot.val();
+                if (shouldRun !== null) {
+                    document.getElementById('pumpStatusValue').textContent = shouldRun ? 'ON' : 'OFF';
+                    
+                    const statusElement = document.getElementById('pumpStatus');
+                    if (shouldRun) {
+                        statusElement.textContent = 'Running';
+                        statusElement.className = 'pump-status pump-on';
+                    } else {
+                        statusElement.textContent = 'Stopped';
+                        statusElement.className = 'pump-status pump-off';
+                    }
+                }
+            });
+
+            // Load latest TDS data from time-based structure
+            database.ref('tds_data').limitToLast(1).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const latestKey = Object.keys(data)[0];
+                    const latestData = data[latestKey];
+                    const timestamp = latestData.timestamp || 'Unknown';
+                    
+                    // Source TDS
+                    if (latestData.source_tds !== undefined) {
+                        document.getElementById('sourceTdsValue').textContent = `${latestData.source_tds.toFixed(1)} ppm`;
+                        document.getElementById('sourceTdsTime').textContent = `Updated: ${timestamp}`;
+                    }
+
+                    // Flow Rate
+                    if (latestData.flow_rate !== undefined) {
+                        document.getElementById('flowRateValue').textContent = `${latestData.flow_rate.toFixed(1)} L/min`;
+                        document.getElementById('flowRateTime').textContent = `Updated: ${timestamp}`;
+                    }
+
+                    // Total Volume
+                    if (latestData.total_volume !== undefined) {
+                        document.getElementById('totalVolumeValue').textContent = `${latestData.total_volume.toFixed(1)} L`;
+                        document.getElementById('totalVolumeTime').textContent = `Updated: ${timestamp}`;
+                    }
+                }
+            });
+        }
+
+        // Load current sensor data for controls
         function loadSensorData() {
             database.ref('sensors/waterLevel').on('value', (snapshot) => {
                 const value = snapshot.val() || 0;
@@ -431,14 +550,9 @@
                 document.getElementById('currentTDS').textContent = `Current: ${value} ppm`;
             });
 
-            database.ref('sensors/ph').on('value', (snapshot) => {
-                const value = snapshot.val() || 7.0;
-                document.getElementById('currentPH').textContent = `Current: ${value}`;
-            });
-
             database.ref('sensors/temperature').on('value', (snapshot) => {
                 const value = snapshot.val() || 25;
-                document.getElementById('currentTemp').textContent = `Current: ${value}°C`;
+                document.getElementById('currentTemp').textContent = `Current: ${value}L/min`;
             });
         }
 
@@ -480,46 +594,6 @@
                 })
                 .catch((error) => {
                     messageDiv.innerHTML = '<div class="error-message">Error updating TDS level</div>';
-                });
-        }
-
-        function updatePH() {
-            const value = document.getElementById('phInput').value;
-            const messageDiv = document.getElementById('phMessage');
-            
-            if (value === '' || value < 0 || value > 14) {
-                messageDiv.innerHTML = '<div class="error-message">Please enter a value between 0 and 14</div>';
-                return;
-            }
-            
-            database.ref('sensors/ph').set(parseFloat(value))
-                .then(() => {
-                    messageDiv.innerHTML = '<div class="success-message">pH level updated successfully!</div>';
-                    document.getElementById('phInput').value = '';
-                    setTimeout(() => messageDiv.innerHTML = '', 3000);
-                })
-                .catch((error) => {
-                    messageDiv.innerHTML = '<div class="error-message">Error updating pH level</div>';
-                });
-        }
-
-        function updateTemp() {
-            const value = document.getElementById('tempInput').value;
-            const messageDiv = document.getElementById('tempMessage');
-            
-            if (value === '') {
-                messageDiv.innerHTML = '<div class="error-message">Please enter a temperature value</div>';
-                return;
-            }
-            
-            database.ref('sensors/temperature').set(parseFloat(value))
-                .then(() => {
-                    messageDiv.innerHTML = '<div class="success-message">Temperature updated successfully!</div>';
-                    document.getElementById('tempInput').value = '';
-                    setTimeout(() => messageDiv.innerHTML = '', 3000);
-                })
-                .catch((error) => {
-                    messageDiv.innerHTML = '<div class="error-message">Error updating temperature</div>';
                 });
         }
 
